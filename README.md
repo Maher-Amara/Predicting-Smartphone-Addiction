@@ -2,7 +2,7 @@
 
 [![Kaggle Competition](https://img.shields.io/badge/Kaggle-Playground%20s6e8-20BEFF?logo=kaggle&logoColor=white)](https://www.kaggle.com/competitions/playground-series-s6e8)
 [![Leaderboard](https://img.shields.io/badge/Public%20LB-0.97107%20(Rank%20420%2F3343)-gold?logo=kaggle&logoColor=white)](https://www.kaggle.com/competitions/playground-series-s6e8/leaderboard)
-[![Metric](https://img.shields.io/badge/Metric-ROC%20AUC-brightgreen)](#-evaluation-metric--format)
+[![Metric](https://img.shields.io/badge/Metric-ROC%20AUC-brightgreen)](#-1-competition-overview)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 
 ---
@@ -35,33 +35,46 @@ An end-to-end multi-model stacking pipeline for predicting smartphone addiction 
 
 ```mermaid
 flowchart TD
-    A[Raw Data: train.csv & test.csv] --> B[Feature Engineering]
-    B --> B1[Ratios & Interactions]
-    B --> B2[Decimal Digit Lattice _d1]
-    B --> B3[Frequency Encoding freq_*]
-    B --> B4[OOF Quantile-Binned TE te_*_bin20]
+    A["Raw Data: train.csv & test.csv"] --> B["Feature Engineering"]
+    B --> B1["Ratios & Interactions"]
+    B --> B2["Decimal Digit Lattice (_d1)"]
+    B --> B3["Frequency Encoding (freq_*)"]
+    B --> B4["OOF Quantile-Binned TE (te_*_bin20)"]
     
-    B1 & B2 & B3 & B4 --> C[Frozen 5-Fold Stratified Split: Seed 42]
+    B1 --> C["Frozen 5-Fold Stratified Split (Seed 42)"]
+    B2 --> C
+    B3 --> C
+    B4 --> C
     
-    C --> D1[LightGBM GBDT]
-    C --> D2[XGBoost Classifier]
-    C --> D3[CatBoost Native TS]
-    C --> D4[PyTorch Tabular ResNet]
-    C --> D5[Logistic Ridge]
+    C --> D1["LightGBM GBDT"]
+    C --> D2["XGBoost Classifier"]
+    C --> D3["CatBoost Native TS"]
+    C --> D4["PyTorch Tabular ResNet"]
+    C --> D5["Logistic Ridge"]
     
-    D1 & D2 & D3 & D4 & D5 --> E[Self-Trained OOF & Test Pool - 8 Models]
-    F[Public Community OOF Libraries] --> G[Public OOF & Test Pool - 117 Models]
+    D1 --> E["Self-Trained OOF & Test Pool (8 Models)"]
+    D2 --> E
+    D3 --> E
+    D4 --> E
+    D5 --> E
     
-    E & G --> H[Combined Pool: 125 Models]
-    H --> I[Automated Quarantine Layer]
-    I --> I1[MD5 Hash Deduplication]
-    I --> I2[Kolmogorov-Smirnov Drift Filter ks <= 0.05]
-    I --> I3[AUC Floor Filter >= 0.90]
+    F["Public Community OOF Libraries"] --> G["Public OOF & Test Pool (117 Models)"]
     
-    I1 & I2 & I3 --> J[Cleaned Ensemble Pool: 123 Models]
-    J --> K[Rank-Gauss Normal Quantile Transform]
-    K --> L[Nested 5-Fold L2 Logistic Regression Meta-Learner]
-    L --> M[Final Calibrated Ranked Submission: 0.97107 LB]
+    E --> H["Combined Pool (125 Models)"]
+    G --> H
+    
+    H --> I["Automated Quarantine Layer"]
+    I --> I1["MD5 Hash Deduplication"]
+    I --> I2["Kolmogorov-Smirnov Drift Filter (ks <= 0.05)"]
+    I --> I3["AUC Floor Filter (AUC >= 0.90)"]
+    
+    I1 --> J["Cleaned Ensemble Pool (123 Models)"]
+    I2 --> J
+    I3 --> J
+    
+    J --> K["Rank-Gauss Normal Quantile Transform"]
+    K --> L["Nested 5-Fold L2 Logistic Regression Meta-Learner"]
+    L --> M["Final Calibrated Ranked Submission (0.97107 LB)"]
 ```
 
 ---
@@ -115,16 +128,16 @@ Blindly stacking all public arrays introduces severe risks (data leakage, duplic
 The pipeline builds **61 tree features** and **88 neural network features** from the raw 12 input features:
 
 1. **Behavioral Ratios & Proportions:**
-   - `screen_to_sleep_ratio`: $\text{daily\_screen\_time\_hours} / (\text{sleep\_hours} + \epsilon)$
-   - `social_share_of_screen`: $\text{social\_media\_hours} / (\text{daily\_screen\_time\_hours} + \epsilon)$
-   - `gaming_share_of_screen`: $\text{gaming\_hours} / (\text{daily\_screen\_time\_hours} + \epsilon)$
-   - `productive_ratio`: $\text{work\_study\_hours} / (\text{daily\_screen\_time\_hours} + \epsilon)$
-   - `weekend_to_weekday_ratio`: $\text{weekend\_screen\_time} / (\text{daily\_screen\_time\_hours} + \epsilon)$
-   - `total_active_hours`: $\text{daily\_screen\_time} + \text{work\_study} + \text{sleep}$ (detecting synthetic edge cases)
+   - `screen_to_sleep_ratio` = `daily_screen_time_hours / (sleep_hours + ε)`
+   - `social_share_of_screen` = `social_media_hours / (daily_screen_time_hours + ε)`
+   - `gaming_share_of_screen` = `gaming_hours / (daily_screen_time_hours + ε)`
+   - `productive_ratio` = `work_study_hours / (daily_screen_time_hours + ε)`
+   - `weekend_to_weekday_ratio` = `weekend_screen_time / (daily_screen_time_hours + ε)`
+   - `total_active_hours` = `daily_screen_time + work_study + sleep` *(detecting synthetic edge cases)*
 2. **Frequency & Rate Metrics:**
-   - `notifications_per_screen_hour`: $\text{notifications\_per\_day} / (\text{screen\_time} + \epsilon)$
-   - `app_opens_per_screen_hour`: $\text{app\_opens\_per\_day} / (\text{screen\_time} + \epsilon)$
-   - `notifications_per_open`: $\text{notifications\_per\_day} / (\text{app\_opens} + \epsilon)$
+   - `notifications_per_screen_hour` = `notifications_per_day / (screen_time + ε)`
+   - `app_opens_per_screen_hour` = `app_opens_per_day / (screen_time + ε)`
+   - `notifications_per_open` = `notifications_per_day / (app_opens + ε)`
 3. **Generator Fingerprinting (Decimal Lattice):**
    - Extracted first decimal digit (`_d1`) across continuous floats ($\lfloor \text{val} \times 10 + 10^{-6} \rfloor \pmod{10}$) to capture generator quantization patterns.
 4. **Frequency Encoding (`freq_*`):**
